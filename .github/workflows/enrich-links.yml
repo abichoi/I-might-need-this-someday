@@ -1,0 +1,46 @@
+name: Auto-fill notes from page descriptions
+
+# Runs whenever links.yml changes on main (e.g. a link saved from the page
+# with the note left blank), or by hand from the Actions tab.
+on:
+  push:
+    branches: [main]
+    paths: [links.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: links-yml
+  cancel-in-progress: false
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install pyyaml
+
+      - name: Fill in missing notes and titles
+        id: enrich
+        run: python .github/scripts/enrich_links.py
+
+      - name: Commit and push
+        if: steps.enrich.outputs.changed == 'true'
+        env:
+          SUMMARY: ${{ steps.enrich.outputs.summary }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898341+github-actions[bot]@users.noreply.github.com"
+          git add links.yml
+          git commit -m "${SUMMARY}"
+          for i in 1 2 3; do
+            git pull --rebase && git push && break
+            sleep 5
+          done

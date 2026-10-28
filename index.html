@@ -117,17 +117,17 @@
     </div>
     <div class="field">
       <label for="f-title">Title</label>
-      <input id="f-title" type="text" placeholder="Short name for the link (defaults to the site name)">
+      <input id="f-title" type="text" placeholder="Leave blank to auto-fill from the page">
     </div>
     <div class="field">
       <label for="f-note">Note</label>
-      <textarea id="f-note" rows="2" placeholder="Why is this useful? Future-you will thank you."></textarea>
+      <textarea id="f-note" rows="2" placeholder="Leave blank to use the page's own description"></textarea>
     </div>
     <div class="field">
       <label for="f-tags">Tags</label>
       <input id="f-tags" type="text" placeholder="comma separated, e.g. cad, 3d-printing">
       <div id="tagPicker" class="tags"></div>
-      <div class="hint">Click an existing tag to add it, or type new ones. No tags means it goes to <b>inbox</b>.</div>
+      <div class="hint">Click an existing tag to add it (most used first), or type new ones. No tags means it goes to <b>inbox</b>.</div>
     </div>
     <div class="field">
       <label for="f-via">Found via</label>
@@ -177,6 +177,8 @@ const allTags = () => {
   links.forEach(l => (l.tags || []).forEach(t => counts[t] = (counts[t] || 0) + 1));
   return counts;
 };
+/* Tags ordered by how many links use them, most used first; ties alphabetical. */
+const tagsByUse = counts => Object.keys(counts).sort((a, b) => counts[b] - counts[a] || a.localeCompare(b));
 
 /* ---------- token storage (this browser only) ---------- */
 const getToken = () => { try { return localStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; } };
@@ -298,7 +300,7 @@ function render() {
     </div>`).join("") : `<div class="msg">No links match.</div>`;
 
   const counts = allTags();
-  $("tags").innerHTML = Object.keys(counts).sort().map(t =>
+  $("tags").innerHTML = tagsByUse(counts).map(t =>
     `<button class="chip${active.has(t) ? " on" : ""}" data-tag="${esc(t)}">${esc(t)} ${counts[t]}</button>`).join("");
   renderTagPicker();
 }
@@ -317,7 +319,7 @@ const parseTags = () => [...new Set($("f-tags").value.split(",")
 
 function renderTagPicker() {
   const chosen = new Set(parseTags());
-  $("tagPicker").innerHTML = Object.keys(allTags()).sort().map(t =>
+  $("tagPicker").innerHTML = tagsByUse(allTags()).map(t =>
     `<button type="button" class="chip${chosen.has(t) ? " on" : ""}" data-pick="${esc(t)}">${esc(t)}</button>`).join("");
 }
 $("tagPicker").addEventListener("click", e => {
@@ -379,7 +381,9 @@ async function save() {
     } else {
       await commit(list => { list.push(clean(e)); }, `Add link: ${e.title}`);
     }
-    setMsg(`${orig ? "Updated" : "Saved"} <b>${esc(e.title)}</b>. The public page may take a minute to catch up.`, "ok");
+    const auto = !e.note || e.title === host(e.url);
+    setMsg(`${orig ? "Updated" : "Saved"} <b>${esc(e.title)}</b>.` +
+      (auto ? " The note will be filled from the page's description in a minute or two (refresh to see it)." : " The public page may take a minute to catch up."), "ok");
     resetForm(false);
   } catch (err) { handleError(err); }
   finally { $("saveBtn").disabled = false; }

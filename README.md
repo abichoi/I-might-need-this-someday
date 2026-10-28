@@ -8,6 +8,9 @@ A place for me to store websites where I might find it useful someday
   GitHub token scoped to this repo with *Contents: Read and write*. The token stays in that browser only.
   Then use **+ Add link**, or **Edit** on any entry; changes are committed straight to `links.yml`.
   Visitors can only view and search.
+- **Auto-fill:** leave the note (or title) blank and the `Auto-fill notes from page descriptions` Action
+  fills it from the page's own description a minute or two later. Text you type yourself is never overwritten,
+  and tags are always yours to choose.
 - **Via an issue:** an issue titled `Add link: …` with a YAML block, opened by the owner, is added by the
   `Add link from issue` Action.
 - **By hand:** append an entry to `links.yml`:

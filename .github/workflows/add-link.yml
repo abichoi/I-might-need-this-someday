@@ -9,7 +9,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: add-link
+  group: links-yml
   cancel-in-progress: false
 
 jobs:
@@ -45,6 +45,10 @@ jobs:
             { echo "error<<EOF"; cat err.txt; echo "EOF"; } >> "$GITHUB_OUTPUT"
           fi
           cat err.txt >&2 || true
+
+      - name: Auto-fill missing note from the page description
+        if: steps.add.outputs.ok == 'true'
+        run: python .github/scripts/enrich_links.py || echo "auto-fill skipped"
 
       - name: Commit and push
         if: steps.add.outputs.ok == 'true'
