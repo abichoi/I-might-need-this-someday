@@ -38,3 +38,10 @@
   tags: [presentation, js]
   added: 2026-10-28
   found_via: Word of mouth
+
+- url: https://shop.pimoroni.com/products/dream-hat-plus-radar?variant=55529907290491
+  title: DreamHAT+ Radar
+  note: 60 GHz mmwave radar, works with raspiberry pi
+  tags: [hardware, hat, rapspberry-pi, robotics, sensor]
+  added: 2026-10-28
+  found_via: Word of mouth
