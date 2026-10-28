@@ -10,3 +10,4 @@
   note: Edge-AI single-board computer for robotics — Qualcomm Dragonwing IQ8 (40 TOPS NPU, 16 GB RAM, Ubuntu/ROS 2) paired with an STM32H5 MCU for real-time control; runs local LLMs/vision models, 3x MIPI-CSI cameras, Pi-style 40-pin header + UNO shield support. Pre-order as of Oct 2026
   tags: [arduino, hardware, edge-ai, robotics, sbc]
   added: 2026-10-28
+  found_via: Word of Mouth
