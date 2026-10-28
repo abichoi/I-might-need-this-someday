@@ -9,13 +9,13 @@
   :root {
     --bg: #faf9f7; --card: #ffffff; --text: #1f1f1f; --muted: #6b6b6b;
     --border: #e4e2dd; --accent: #2f6fdb; --accent-text: #fff; --chip: #eef1f6;
-    --chip-on: #2f6fdb; --chip-on-text: #fff; --danger: #c0392b;
+    --chip-on: #2f6fdb; --chip-on-text: #fff; --danger: #c0392b; --ok: #2e7d4f;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #161616; --card: #1f1f1f; --text: #ececec; --muted: #9a9a9a;
       --border: #2e2e2e; --accent: #7aa5f0; --accent-text: #111; --chip: #2a2d33;
-      --chip-on: #7aa5f0; --chip-on-text: #111; --danger: #ef7d6d;
+      --chip-on: #7aa5f0; --chip-on-text: #111; --danger: #ef7d6d; --ok: #6fcf97;
     }
   }
   * { box-sizing: border-box; }
@@ -28,6 +28,10 @@
   .btn { border: 0; border-radius: 10px; padding: 10px 14px; font: inherit; font-weight: 600;
          cursor: pointer; background: var(--accent); color: var(--accent-text); white-space: nowrap; }
   .btn.ghost { background: var(--chip); color: var(--text); }
+  .btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .btn:disabled { opacity: .6; cursor: wait; }
+  .linkbtn { background: none; border: 0; padding: 0; font: inherit; color: var(--accent);
+             cursor: pointer; text-decoration: underline; }
   input, textarea { width: 100%; padding: 10px 12px; font: inherit; border-radius: 10px;
          border: 1px solid var(--border); background: var(--card); color: var(--text); }
   input[type=search] { padding: 12px 14px; font-size: 1rem; }
@@ -39,8 +43,12 @@
   .count { color: var(--muted); font-size: .85rem; margin: 10px 0 14px; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
           padding: 14px 16px; margin-bottom: 10px; }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
   .card a.title { color: var(--accent); font-weight: 600; text-decoration: none; font-size: 1.02rem; }
   .card a.title:hover { text-decoration: underline; }
+  .editbtn { border: 1px solid var(--border); background: transparent; color: var(--muted); border-radius: 8px;
+             padding: 2px 10px; font: inherit; font-size: .8rem; cursor: pointer; flex-shrink: 0; }
+  .editbtn:hover { color: var(--text); border-color: var(--muted); }
   .host { color: var(--muted); font-size: .8rem; word-break: break-all; }
   .note { margin: 6px 0 8px; }
   .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: .8rem; color: var(--muted); }
@@ -48,20 +56,24 @@
   .meta a { color: var(--muted); }
   .msg { color: var(--muted); padding: 24px 0; text-align: center; }
 
-  /* Add-link form */
-  #addForm { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-             padding: 16px; margin-bottom: 20px; }
-  #addForm[hidden] { display: none; }
-  #addForm h2 { font-size: 1.1rem; margin: 0 0 12px; }
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+           padding: 16px; margin-bottom: 20px; }
+  .panel[hidden] { display: none; }
+  .panel h2 { font-size: 1.1rem; margin: 0 0 12px; }
   .field { margin-bottom: 12px; }
   .field label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: 4px; }
-  .field .hint { color: var(--muted); font-size: .8rem; margin-top: 4px; }
+  .hint { color: var(--muted); font-size: .8rem; margin-top: 4px; }
+  .hint ol { margin: 4px 0 0; padding-left: 20px; }
   .req { color: var(--danger); }
-  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+  .actions .spacer { flex: 1; }
   #preview { white-space: pre-wrap; background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
-             padding: 10px 12px; font: 13px/1.45 ui-monospace, Menlo, Consolas, monospace; margin: 0 0 12px; overflow-x: auto; }
-  #formMsg { font-size: .85rem; color: var(--muted); margin-top: 8px; }
+             padding: 10px 12px; font: 13px/1.45 ui-monospace, Menlo, Consolas, monospace; margin: 0; overflow-x: auto; }
+  #formMsg { font-size: .85rem; color: var(--muted); margin-top: 10px; }
   #formMsg.err { color: var(--danger); }
+  #formMsg.ok { color: var(--ok); }
+  .tokenline { font-size: .8rem; color: var(--muted); margin-top: 10px; }
+  footer { margin-top: 32px; font-size: .8rem; color: var(--muted); text-align: center; }
 </style>
 </head>
 <body>
@@ -71,18 +83,41 @@
       <h1>I Might Need This Someday</h1>
       <p class="sub">Links worth keeping. Search by title, note, URL or tag.</p>
     </div>
-    <button id="toggleAdd" class="btn">+ Add link</button>
+    <button id="toggleAdd" class="btn" hidden>+ Add link</button>
   </header>
 
-  <form id="addForm" hidden autocomplete="off">
-    <h2>Add a link</h2>
+  <!-- One-time token setup -->
+  <div id="tokenPanel" class="panel" hidden>
+    <h2>Connect to GitHub (owner only, once per browser)</h2>
+    <div class="field">
+      <label for="f-token">Fine-grained personal access token</label>
+      <input id="f-token" type="password" placeholder="github_pat_…" autocomplete="off">
+      <div class="hint">
+        <ol>
+          <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub → new fine-grained token</a>.</li>
+          <li><b>Repository access:</b> Only select repositories → <b>I-might-need-this-someday</b>.</li>
+          <li><b>Permissions → Repository → Contents:</b> Read and write. Nothing else.</li>
+          <li>Generate, copy, and paste it here.</li>
+        </ol>
+        The token is saved only in this browser. It is never put in the repo or shown to visitors.
+      </div>
+    </div>
+    <div class="actions">
+      <button id="saveToken" class="btn" type="button">Save token</button>
+      <button id="cancelToken" class="btn ghost" type="button">Cancel</button>
+    </div>
+    <div id="tokenMsg" class="hint"></div>
+  </div>
+
+  <form id="addForm" class="panel" hidden autocomplete="off">
+    <h2 id="formTitle">Add a link</h2>
     <div class="field">
       <label for="f-url">URL <span class="req">*</span></label>
       <input id="f-url" type="url" placeholder="https://…" required>
     </div>
     <div class="field">
       <label for="f-title">Title</label>
-      <input id="f-title" type="text" placeholder="Leave blank to use the page's own title">
+      <input id="f-title" type="text" placeholder="Short name for the link (defaults to the site name)">
     </div>
     <div class="field">
       <label for="f-note">Note</label>
@@ -103,36 +138,138 @@
       <pre id="preview"></pre>
     </div>
     <div class="actions">
-      <button type="submit" class="btn">Save to GitHub</button>
+      <button type="submit" id="saveBtn" class="btn">Save</button>
       <button type="button" id="copyYaml" class="btn ghost">Copy YAML</button>
       <button type="button" id="cancelAdd" class="btn ghost">Cancel</button>
+      <span class="spacer"></span>
+      <button type="button" id="deleteBtn" class="btn danger" hidden>Delete link</button>
     </div>
-    <div id="formMsg">"Save to GitHub" opens a pre-filled issue. Click <b>Submit new issue</b> there and the link is added automatically within a minute.</div>
+    <div id="formMsg"></div>
+    <div class="tokenline" id="tokenLine"></div>
   </form>
 
   <input id="q" type="search" placeholder="Search…" autofocus>
   <div id="tags" class="tags"></div>
   <div id="count" class="count"></div>
   <div id="list"></div>
+  <footer><button id="ownerLink" class="linkbtn" type="button">Owner sign-in</button></footer>
 </main>
 <script>
 const REPO = "abichoi/I-might-need-this-someday";
+const BRANCH = "main";
+const FILE = "links.yml";
+const TOKEN_KEY = "imnts-github-token";
+const API = `https://api.github.com/repos/${REPO}/contents/${FILE}`;
+const FIELD_ORDER = ["url", "title", "note", "tags", "added", "found_via"];
 
-let links = [];
+let links = [];          // entries as in the file, each with _i = position in the file
+let editing = null;      // the entry being edited, or null when adding
 const active = new Set();
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
   ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const host = u => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return u; } };
-const isUrl = s => /^https?:\/\//i.test(s || "");
+const isUrl = s => /^https?:\/\/\S+$/i.test(s || "");
 const today = () => new Date().toISOString().slice(0, 10);
+const dateStr = d => d ? String(d instanceof Date ? d.toISOString() : d).slice(0, 10) : "";
 const allTags = () => {
   const counts = {};
   links.forEach(l => (l.tags || []).forEach(t => counts[t] = (counts[t] || 0) + 1));
   return counts;
 };
 
+/* ---------- token storage (this browser only) ---------- */
+const getToken = () => { try { return localStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; } };
+const setToken = t => { try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); return true; } catch { return false; } };
+let sessionToken = getToken();
+const isOwner = () => !!sessionToken;
+
+function refreshOwnerUi() {
+  $("toggleAdd").hidden = !isOwner();
+  $("ownerLink").textContent = isOwner() ? "Sign out (forget token on this browser)" : "Owner sign-in";
+  $("tokenLine").innerHTML = isOwner()
+    ? `Connected to GitHub. Changes are committed straight to ${FILE}.`
+    : "";
+  render();
+}
+$("ownerLink").addEventListener("click", () => {
+  if (isOwner()) {
+    setToken(""); sessionToken = ""; openForm(false); refreshOwnerUi();
+  } else {
+    showTokenPanel(true);
+  }
+});
+
+/* ---------- GitHub API helpers ---------- */
+const b64decode = b64 => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, "")), c => c.charCodeAt(0)));
+function b64encode(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+async function gh(method, url, body) {
+  const r = await fetch(url, {
+    method, cache: "no-store",
+    headers: { "Authorization": `Bearer ${sessionToken}`, "Accept": "application/vnd.github+json",
+               "X-GitHub-Api-Version": "2022-11-28", ...(body ? { "Content-Type": "application/json" } : {}) },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) { const err = new Error(data.message || `HTTP ${r.status}`); err.status = r.status; throw err; }
+  return data;
+}
+const readFile = async () => {
+  const d = await gh("GET", `${API}?ref=${BRANCH}`);
+  return { text: b64decode(d.content), sha: d.sha };
+};
+const parse = text => (jsyaml.load(text) || []);
+
+/* ---------- YAML output in the same layout as the file ---------- */
+function clean(e) {
+  const out = {};
+  const keys = [...FIELD_ORDER, ...Object.keys(e).filter(k => !FIELD_ORDER.includes(k) && !k.startsWith("_"))];
+  for (const k of keys) {
+    let v = e[k];
+    if (v === undefined || v === null || v === "" || (Array.isArray(v) && !v.length)) continue;
+    if (k === "added") v = dateStr(v);
+    out[k] = v;
+  }
+  return out;
+}
+const dumpEntry = e => jsyaml.dump([clean(e)], { lineWidth: -1, flowLevel: 2 })
+  .replace(/^(\s+added: )'(\d{4}-\d{2}-\d{2})'$/gm, "$1$2");
+const dumpAll = list => list.map(dumpEntry).join("\n");
+
+/* Read the latest file, apply a change, check it parses, commit. Retries once on a conflict. */
+async function commit(change, message) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { text, sha } = await readFile();
+    const list = parse(text);
+    change(list);
+    const updated = dumpAll(list);
+    parse(updated);
+    try {
+      await gh("PUT", API, { message, content: b64encode(updated), sha, branch: BRANCH });
+      setLinks(list);
+      return;
+    } catch (err) {
+      if (err.status === 409 && attempt === 0) continue;
+      throw err;
+    }
+  }
+}
+/* Find an entry in a freshly read list: by original position if it still matches, else by URL. */
+function locate(list, orig) {
+  if (list[orig._i]?.url === orig.url) return orig._i;
+  return list.findIndex(l => l.url === orig.url);
+}
+
 /* ---------- search + list ---------- */
+function setLinks(list) {
+  links = list.map((l, i) => ({ ...l, _i: i, added: dateStr(l.added) }));
+  render();
+}
 function render() {
   const words = $("q").value.toLowerCase().split(/\s+/).filter(Boolean);
   const shown = links.filter(l => {
@@ -140,12 +277,15 @@ function render() {
     if ([...active].some(t => !tags.includes(t))) return false;
     const hay = [l.title, l.note, l.url, l.found_via, tags.join(" ")].join(" ").toLowerCase();
     return words.every(w => hay.includes(w));
-  });
+  }).sort((a, b) => b.added.localeCompare(a.added) || b._i - a._i);
 
   $("count").textContent = `${shown.length} of ${links.length} links`;
   $("list").innerHTML = shown.length ? shown.map(l => `
     <div class="card">
-      <a class="title" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title || l.url)}</a>
+      <div class="card-top">
+        <a class="title" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title || l.url)}</a>
+        ${isOwner() ? `<button class="editbtn" data-edit="${l._i}">Edit</button>` : ""}
+      </div>
       <div class="host">${esc(host(l.url))}</div>
       ${l.note ? `<div class="note">${esc(l.note)}</div>` : ""}
       <div class="meta">
@@ -165,13 +305,13 @@ function render() {
 
 document.addEventListener("click", e => {
   const t = e.target.closest("[data-tag]")?.dataset.tag;
-  if (!t) return;
-  active.has(t) ? active.delete(t) : active.add(t);
-  render();
+  if (t) { active.has(t) ? active.delete(t) : active.add(t); render(); return; }
+  const ed = e.target.closest("[data-edit]")?.dataset.edit;
+  if (ed !== undefined) startEdit(links.find(l => l._i === Number(ed)));
 });
 $("q").addEventListener("input", render);
 
-/* ---------- add-link form ---------- */
+/* ---------- add / edit form ---------- */
 const parseTags = () => [...new Set($("f-tags").value.split(",")
   .map(t => t.trim().toLowerCase().replace(/\s+/g, "-")).filter(Boolean))];
 
@@ -180,7 +320,6 @@ function renderTagPicker() {
   $("tagPicker").innerHTML = Object.keys(allTags()).sort().map(t =>
     `<button type="button" class="chip${chosen.has(t) ? " on" : ""}" data-pick="${esc(t)}">${esc(t)}</button>`).join("");
 }
-
 $("tagPicker").addEventListener("click", e => {
   const t = e.target.closest("[data-pick]")?.dataset.pick;
   if (!t) return;
@@ -191,78 +330,163 @@ $("tagPicker").addEventListener("click", e => {
   renderTagPicker(); updatePreview();
 });
 
-function entry() {
-  const e = { url: $("f-url").value.trim() };
-  const title = $("f-title").value.trim();
-  const note = $("f-note").value.trim().replace(/\s+/g, " ");
-  const via = $("f-via").value.trim();
-  if (title) e.title = title;
-  if (note) e.note = note;
+function formEntry() {
+  const url = $("f-url").value.trim();
+  const e = editing ? { ...editing } : {};   // keeps any extra fields on edit
+  e.url = url;
+  e.title = $("f-title").value.trim() || host(url) || url;
+  e.note = $("f-note").value.trim().replace(/\s+/g, " ");
   const tags = parseTags();
   e.tags = tags.length ? tags : ["inbox"];
-  e.added = today();
-  if (via) e.found_via = via;
+  e.added = editing?.added || today();
+  e.found_via = $("f-via").value.trim();
   return e;
 }
-const entryYaml = () => jsyaml.dump([entry()], { lineWidth: -1, flowLevel: 2 });
-
-function updatePreview() { $("preview").textContent = entryYaml(); }
+function updatePreview() { $("preview").textContent = dumpEntry(formEntry()); }
 ["f-url", "f-title", "f-note", "f-tags", "f-via"].forEach(id =>
   $(id).addEventListener("input", () => { updatePreview(); if (id === "f-tags") renderTagPicker(); }));
 
-function setMsg(text, err) { $("formMsg").innerHTML = text; $("formMsg").className = err ? "err" : ""; }
+function setMsg(html, kind) { $("formMsg").innerHTML = html; $("formMsg").className = kind || ""; }
 
 function validate() {
   const url = $("f-url").value.trim();
-  if (!isUrl(url)) { setMsg("Please enter a full URL starting with http:// or https://", true); $("f-url").focus(); return false; }
-  const dup = links.find(l => l.url === url);
-  if (dup && !confirm(`This URL is already saved as "${dup.title || dup.url}". Add it again anyway?`)) return false;
+  if (!isUrl(url)) { setMsg("Please enter a full URL starting with http:// or https://", "err"); $("f-url").focus(); return false; }
+  const dup = links.find(l => l.url === url && (!editing || l._i !== editing._i));
+  if (dup && !confirm(`This URL is already saved as "${dup.title || dup.url}". Save anyway?`)) return false;
   return true;
 }
 
-$("addForm").addEventListener("submit", e => {
-  e.preventDefault();
-  if (!validate()) return;
-  const en = entry();
-  const body = "<!-- Submitted from the link page. Just click 'Submit new issue'. -->\n\n```yaml\n" + entryYaml() + "```\n";
-  const issueUrl = `https://github.com/${REPO}/issues/new?` + new URLSearchParams({
-    title: `Add link: ${en.title || host(en.url)}`, body, labels: "add-link"
-  });
-  window.open(issueUrl, "_blank", "noopener");
-  setMsg("Opened GitHub. Click <b>Submit new issue</b> there. Refresh this page in a minute or two to see the link.");
-});
+function handleError(err) {
+  if (err.status === 401 || err.status === 403 || err.status === 404) {
+    setMsg(`GitHub refused the token (${esc(err.message)}). Check it has <b>Contents: Read and write</b> on this repo and hasn't expired, then sign in again.`, "err");
+    setToken(""); sessionToken = ""; refreshOwnerUi(); showTokenPanel(true);
+  } else {
+    setMsg(`Couldn't save: ${esc(err.message)}. Your changes are still in the form. Try again, or use Copy YAML.`, "err");
+  }
+}
 
+async function save() {
+  const e = formEntry();
+  const orig = editing;
+  $("saveBtn").disabled = true; setMsg("Saving to GitHub…");
+  try {
+    if (orig) {
+      await commit(list => {
+        const i = locate(list, orig);
+        if (i < 0) throw new Error("that link is no longer in the file (was it deleted elsewhere?)");
+        list[i] = clean(e);
+      }, `Edit link: ${e.title}`);
+    } else {
+      await commit(list => { list.push(clean(e)); }, `Add link: ${e.title}`);
+    }
+    setMsg(`${orig ? "Updated" : "Saved"} <b>${esc(e.title)}</b>. The public page may take a minute to catch up.`, "ok");
+    resetForm(false);
+  } catch (err) { handleError(err); }
+  finally { $("saveBtn").disabled = false; }
+}
+
+async function remove() {
+  const orig = editing;
+  if (!orig || !confirm(`Delete "${orig.title || orig.url}" from the list?`)) return;
+  $("deleteBtn").disabled = true; setMsg("Deleting…");
+  try {
+    await commit(list => {
+      const i = locate(list, orig);
+      if (i < 0) throw new Error("that link is no longer in the file");
+      list.splice(i, 1);
+    }, `Delete link: ${orig.title || orig.url}`);
+    setMsg(`Deleted <b>${esc(orig.title || orig.url)}</b>.`, "ok");
+    resetForm(false);
+  } catch (err) { handleError(err); }
+  finally { $("deleteBtn").disabled = false; }
+}
+
+$("addForm").addEventListener("submit", ev => {
+  ev.preventDefault();
+  if (!isOwner()) { showTokenPanel(true); return; }
+  if (validate()) save();
+});
+$("deleteBtn").addEventListener("click", remove);
 $("copyYaml").addEventListener("click", async () => {
   if (!validate()) return;
-  try { await navigator.clipboard.writeText(entryYaml()); setMsg("Copied. Paste it at the end of links.yml."); }
-  catch { setMsg("Couldn't copy automatically. Select the preview text and copy it.", true); }
+  try { await navigator.clipboard.writeText(dumpEntry(formEntry())); setMsg("Copied.", "ok"); }
+  catch { setMsg("Couldn't copy automatically. Select the preview text and copy it.", "err"); }
 });
 
+function resetForm(keepMsg) {
+  editing = null;
+  $("addForm").reset();
+  $("formTitle").textContent = "Add a link";
+  $("saveBtn").textContent = "Save";
+  $("deleteBtn").hidden = true;
+  if (!keepMsg) updatePreview();
+}
+function startEdit(l) {
+  if (!l || !isOwner()) return;
+  resetForm();
+  editing = l;
+  $("f-url").value = l.url || "";
+  $("f-title").value = l.title || "";
+  $("f-note").value = l.note || "";
+  $("f-tags").value = (l.tags || []).join(", ");
+  $("f-via").value = l.found_via || "";
+  $("formTitle").textContent = "Edit link";
+  $("saveBtn").textContent = "Save changes";
+  $("deleteBtn").hidden = false;
+  setMsg("");
+  openForm(true);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
 function openForm(show) {
   $("addForm").hidden = !show;
   $("toggleAdd").textContent = show ? "Close" : "+ Add link";
   if (show) { updatePreview(); renderTagPicker(); $("f-url").focus(); }
 }
-$("toggleAdd").addEventListener("click", () => openForm($("addForm").hidden));
-$("cancelAdd").addEventListener("click", () => { $("addForm").reset(); openForm(false); });
+$("toggleAdd").addEventListener("click", () => {
+  if ($("addForm").hidden) { resetForm(); setMsg(""); openForm(true); } else { resetForm(); openForm(false); }
+});
+$("cancelAdd").addEventListener("click", () => { resetForm(); setMsg(""); openForm(false); });
 
-/* Bookmarklet / share support: index.html?add=<url>&title=<title> opens the form pre-filled */
+/* ---------- token panel ---------- */
+function showTokenPanel(show) { $("tokenPanel").hidden = !show; if (show) $("f-token").focus(); }
+$("cancelToken").addEventListener("click", () => showTokenPanel(false));
+$("saveToken").addEventListener("click", async () => {
+  const t = $("f-token").value.trim();
+  if (!t) return;
+  sessionToken = t;
+  $("tokenMsg").textContent = "Checking token…";
+  try {
+    const { text } = await readFile();
+    const stored = setToken(t);
+    $("f-token").value = ""; $("tokenMsg").textContent = "";
+    showTokenPanel(false);
+    setLinks(parse(text));
+    refreshOwnerUi();
+    if (!stored) alert("Signed in for this visit only: this browser blocks storage, so you'll need the token again next time.");
+  } catch (err) {
+    sessionToken = "";
+    $("tokenMsg").innerHTML = `<span style="color:var(--danger)">That token didn't work (${esc(err.message)}). Check the repository and Contents permission.</span>`;
+  }
+});
+
+/* index.html?add=<url>&title=<title> opens the form pre-filled (for a bookmarklet) */
 const params = new URLSearchParams(location.search);
-if (params.get("add")) {
-  $("f-url").value = params.get("add");
-  if (params.get("title")) $("f-title").value = params.get("title");
-}
 
-/* ---------- load data ---------- */
-fetch("links.yml", { cache: "no-store" })
-  .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
-  .then(txt => {
-    links = (jsyaml.load(txt) || []).map(l => ({ ...l, added: l.added ? String(l.added).slice(0, 10) : "" }));
-    links.sort((a, b) => b.added.localeCompare(a.added));
-    render();
-  })
-  .catch(() => { $("list").innerHTML = `<div class="msg">Couldn't load links.yml. It must sit next to this page, and the page must be served over the web (GitHub Pages), not opened as a local file.</div>`; })
-  .finally(() => { if (params.get("add")) openForm(true); });
+/* ---------- load data (fresh from GitHub when signed in, else the published file) ---------- */
+(isOwner() ? readFile().then(f => f.text) : Promise.reject())
+  .catch(() => fetch(FILE, { cache: "no-store" }).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }))
+  .then(txt => setLinks(parse(txt)))
+  .catch(() => { $("list").innerHTML = `<div class="msg">Couldn't load ${FILE}. The page must be served over the web (GitHub Pages), not opened as a local file.</div>`; })
+  .finally(() => {
+    refreshOwnerUi();
+    if (params.get("add")) {
+      if (!isOwner()) { showTokenPanel(true); return; }
+      resetForm(); openForm(true);
+      $("f-url").value = params.get("add");
+      if (params.get("title")) $("f-title").value = params.get("title");
+      updatePreview();
+    }
+  });
 </script>
 </body>
 </html>
