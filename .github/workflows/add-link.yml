@@ -1,0 +1,79 @@
+name: Add link from issue
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: add-link
+  cancel-in-progress: false
+
+jobs:
+  add-link:
+    # Only the repo owner can add links, and only via issues labelled "add-link"
+    # or titled "Add link: ...".
+    if: >-
+      github.event.issue.user.login == github.repository_owner &&
+      github.event.issue.state == 'open' &&
+      (contains(github.event.issue.labels.*.name, 'add-link') ||
+       startsWith(github.event.issue.title, 'Add link:'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install pyyaml
+
+      - name: Append link to links.yml
+        id: add
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          set -o pipefail
+          if title=$(python .github/scripts/add_link.py 2> err.txt); then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+            { echo "title<<EOF"; echo "$title"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            { echo "error<<EOF"; cat err.txt; echo "EOF"; } >> "$GITHUB_OUTPUT"
+          fi
+          cat err.txt >&2 || true
+
+      - name: Commit and push
+        if: steps.add.outputs.ok == 'true'
+        env:
+          LINK_TITLE: ${{ steps.add.outputs.title }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898341+github-actions[bot]@users.noreply.github.com"
+          git add links.yml
+          git commit -m "Add link: ${LINK_TITLE}"
+          for i in 1 2 3; do
+            git pull --rebase && git push && break
+            sleep 5
+          done
+
+      - name: Close issue
+        if: steps.add.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LINK_TITLE: ${{ steps.add.outputs.title }}
+        run: |
+          gh issue close "${{ github.event.issue.number }}" --repo "${{ github.repository }}" \
+            --comment "Saved to links.yml as \"${LINK_TITLE}\"."
+
+      - name: Report problem
+        if: steps.add.outputs.ok == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ERR: ${{ steps.add.outputs.error }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" --repo "${{ github.repository }}" \
+            --body "Couldn't add this link: ${ERR}. Edit the issue's YAML block, then remove and re-add the add-link label to try again."

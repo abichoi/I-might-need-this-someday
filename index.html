@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>I Might Need This Someday</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<style>
+  :root {
+    --bg: #faf9f7; --card: #ffffff; --text: #1f1f1f; --muted: #6b6b6b;
+    --border: #e4e2dd; --accent: #2f6fdb; --accent-text: #fff; --chip: #eef1f6;
+    --chip-on: #2f6fdb; --chip-on-text: #fff; --danger: #c0392b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161616; --card: #1f1f1f; --text: #ececec; --muted: #9a9a9a;
+      --border: #2e2e2e; --accent: #7aa5f0; --accent-text: #111; --chip: #2a2d33;
+      --chip-on: #7aa5f0; --chip-on-text: #111; --danger: #ef7d6d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .btn { border: 0; border-radius: 10px; padding: 10px 14px; font: inherit; font-weight: 600;
+         cursor: pointer; background: var(--accent); color: var(--accent-text); white-space: nowrap; }
+  .btn.ghost { background: var(--chip); color: var(--text); }
+  input, textarea { width: 100%; padding: 10px 12px; font: inherit; border-radius: 10px;
+         border: 1px solid var(--border); background: var(--card); color: var(--text); }
+  input[type=search] { padding: 12px 14px; font-size: 1rem; }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 6px; }
+  .chip { border: 0; padding: 4px 10px; border-radius: 999px; font-size: .85rem; cursor: pointer;
+          background: var(--chip); color: var(--text); font-family: inherit; }
+  .chip.on { background: var(--chip-on); color: var(--chip-on-text); }
+  .count { color: var(--muted); font-size: .85rem; margin: 10px 0 14px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+          padding: 14px 16px; margin-bottom: 10px; }
+  .card a.title { color: var(--accent); font-weight: 600; text-decoration: none; font-size: 1.02rem; }
+  .card a.title:hover { text-decoration: underline; }
+  .host { color: var(--muted); font-size: .8rem; word-break: break-all; }
+  .note { margin: 6px 0 8px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: .8rem; color: var(--muted); }
+  .meta .chip { font-size: .75rem; padding: 2px 8px; }
+  .meta a { color: var(--muted); }
+  .msg { color: var(--muted); padding: 24px 0; text-align: center; }
+
+  /* Add-link form */
+  #addForm { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+             padding: 16px; margin-bottom: 20px; }
+  #addForm[hidden] { display: none; }
+  #addForm h2 { font-size: 1.1rem; margin: 0 0 12px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: 4px; }
+  .field .hint { color: var(--muted); font-size: .8rem; margin-top: 4px; }
+  .req { color: var(--danger); }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  #preview { white-space: pre-wrap; background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+             padding: 10px 12px; font: 13px/1.45 ui-monospace, Menlo, Consolas, monospace; margin: 0 0 12px; overflow-x: auto; }
+  #formMsg { font-size: .85rem; color: var(--muted); margin-top: 8px; }
+  #formMsg.err { color: var(--danger); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>I Might Need This Someday</h1>
+      <p class="sub">Links worth keeping. Search by title, note, URL or tag.</p>
+    </div>
+    <button id="toggleAdd" class="btn">+ Add link</button>
+  </header>
+
+  <form id="addForm" hidden autocomplete="off">
+    <h2>Add a link</h2>
+    <div class="field">
+      <label for="f-url">URL <span class="req">*</span></label>
+      <input id="f-url" type="url" placeholder="https://…" required>
+    </div>
+    <div class="field">
+      <label for="f-title">Title</label>
+      <input id="f-title" type="text" placeholder="Leave blank to use the page's own title">
+    </div>
+    <div class="field">
+      <label for="f-note">Note</label>
+      <textarea id="f-note" rows="2" placeholder="Why is this useful? Future-you will thank you."></textarea>
+    </div>
+    <div class="field">
+      <label for="f-tags">Tags</label>
+      <input id="f-tags" type="text" placeholder="comma separated, e.g. cad, 3d-printing">
+      <div id="tagPicker" class="tags"></div>
+      <div class="hint">Click an existing tag to add it, or type new ones. No tags means it goes to <b>inbox</b>.</div>
+    </div>
+    <div class="field">
+      <label for="f-via">Found via</label>
+      <input id="f-via" type="text" placeholder="Where you found it: a URL (e.g. a YouTube video) or a short note">
+    </div>
+    <div class="field">
+      <label>Preview</label>
+      <pre id="preview"></pre>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn">Save to GitHub</button>
+      <button type="button" id="copyYaml" class="btn ghost">Copy YAML</button>
+      <button type="button" id="cancelAdd" class="btn ghost">Cancel</button>
+    </div>
+    <div id="formMsg">"Save to GitHub" opens a pre-filled issue. Click <b>Submit new issue</b> there and the link is added automatically within a minute.</div>
+  </form>
+
+  <input id="q" type="search" placeholder="Search…" autofocus>
+  <div id="tags" class="tags"></div>
+  <div id="count" class="count"></div>
+  <div id="list"></div>
+</main>
+<script>
+const REPO = "abichoi/I-might-need-this-someday";
+
+let links = [];
+const active = new Set();
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const host = u => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return u; } };
+const isUrl = s => /^https?:\/\//i.test(s || "");
+const today = () => new Date().toISOString().slice(0, 10);
+const allTags = () => {
+  const counts = {};
+  links.forEach(l => (l.tags || []).forEach(t => counts[t] = (counts[t] || 0) + 1));
+  return counts;
+};
+
+/* ---------- search + list ---------- */
+function render() {
+  const words = $("q").value.toLowerCase().split(/\s+/).filter(Boolean);
+  const shown = links.filter(l => {
+    const tags = l.tags || [];
+    if ([...active].some(t => !tags.includes(t))) return false;
+    const hay = [l.title, l.note, l.url, l.found_via, tags.join(" ")].join(" ").toLowerCase();
+    return words.every(w => hay.includes(w));
+  });
+
+  $("count").textContent = `${shown.length} of ${links.length} links`;
+  $("list").innerHTML = shown.length ? shown.map(l => `
+    <div class="card">
+      <a class="title" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title || l.url)}</a>
+      <div class="host">${esc(host(l.url))}</div>
+      ${l.note ? `<div class="note">${esc(l.note)}</div>` : ""}
+      <div class="meta">
+        ${(l.tags || []).map(t => `<button class="chip${active.has(t) ? " on" : ""}" data-tag="${esc(t)}">${esc(t)}</button>`).join("")}
+        ${l.added ? `<span>added ${esc(l.added)}</span>` : ""}
+        ${l.found_via ? `<span>· ${isUrl(l.found_via)
+            ? `<a href="${esc(l.found_via)}" target="_blank" rel="noopener">found via ${esc(host(l.found_via))}</a>`
+            : `found via ${esc(l.found_via)}`}</span>` : ""}
+      </div>
+    </div>`).join("") : `<div class="msg">No links match.</div>`;
+
+  const counts = allTags();
+  $("tags").innerHTML = Object.keys(counts).sort().map(t =>
+    `<button class="chip${active.has(t) ? " on" : ""}" data-tag="${esc(t)}">${esc(t)} ${counts[t]}</button>`).join("");
+  renderTagPicker();
+}
+
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-tag]")?.dataset.tag;
+  if (!t) return;
+  active.has(t) ? active.delete(t) : active.add(t);
+  render();
+});
+$("q").addEventListener("input", render);
+
+/* ---------- add-link form ---------- */
+const parseTags = () => [...new Set($("f-tags").value.split(",")
+  .map(t => t.trim().toLowerCase().replace(/\s+/g, "-")).filter(Boolean))];
+
+function renderTagPicker() {
+  const chosen = new Set(parseTags());
+  $("tagPicker").innerHTML = Object.keys(allTags()).sort().map(t =>
+    `<button type="button" class="chip${chosen.has(t) ? " on" : ""}" data-pick="${esc(t)}">${esc(t)}</button>`).join("");
+}
+
+$("tagPicker").addEventListener("click", e => {
+  const t = e.target.closest("[data-pick]")?.dataset.pick;
+  if (!t) return;
+  const tags = parseTags();
+  const i = tags.indexOf(t);
+  i >= 0 ? tags.splice(i, 1) : tags.push(t);
+  $("f-tags").value = tags.join(", ");
+  renderTagPicker(); updatePreview();
+});
+
+function entry() {
+  const e = { url: $("f-url").value.trim() };
+  const title = $("f-title").value.trim();
+  const note = $("f-note").value.trim().replace(/\s+/g, " ");
+  const via = $("f-via").value.trim();
+  if (title) e.title = title;
+  if (note) e.note = note;
+  const tags = parseTags();
+  e.tags = tags.length ? tags : ["inbox"];
+  e.added = today();
+  if (via) e.found_via = via;
+  return e;
+}
+const entryYaml = () => jsyaml.dump([entry()], { lineWidth: -1, flowLevel: 2 });
+
+function updatePreview() { $("preview").textContent = entryYaml(); }
+["f-url", "f-title", "f-note", "f-tags", "f-via"].forEach(id =>
+  $(id).addEventListener("input", () => { updatePreview(); if (id === "f-tags") renderTagPicker(); }));
+
+function setMsg(text, err) { $("formMsg").innerHTML = text; $("formMsg").className = err ? "err" : ""; }
+
+function validate() {
+  const url = $("f-url").value.trim();
+  if (!isUrl(url)) { setMsg("Please enter a full URL starting with http:// or https://", true); $("f-url").focus(); return false; }
+  const dup = links.find(l => l.url === url);
+  if (dup && !confirm(`This URL is already saved as "${dup.title || dup.url}". Add it again anyway?`)) return false;
+  return true;
+}
+
+$("addForm").addEventListener("submit", e => {
+  e.preventDefault();
+  if (!validate()) return;
+  const en = entry();
+  const body = "<!-- Submitted from the link page. Just click 'Submit new issue'. -->\n\n```yaml\n" + entryYaml() + "```\n";
+  const issueUrl = `https://github.com/${REPO}/issues/new?` + new URLSearchParams({
+    title: `Add link: ${en.title || host(en.url)}`, body, labels: "add-link"
+  });
+  window.open(issueUrl, "_blank", "noopener");
+  setMsg("Opened GitHub. Click <b>Submit new issue</b> there. Refresh this page in a minute or two to see the link.");
+});
+
+$("copyYaml").addEventListener("click", async () => {
+  if (!validate()) return;
+  try { await navigator.clipboard.writeText(entryYaml()); setMsg("Copied. Paste it at the end of links.yml."); }
+  catch { setMsg("Couldn't copy automatically. Select the preview text and copy it.", true); }
+});
+
+function openForm(show) {
+  $("addForm").hidden = !show;
+  $("toggleAdd").textContent = show ? "Close" : "+ Add link";
+  if (show) { updatePreview(); renderTagPicker(); $("f-url").focus(); }
+}
+$("toggleAdd").addEventListener("click", () => openForm($("addForm").hidden));
+$("cancelAdd").addEventListener("click", () => { $("addForm").reset(); openForm(false); });
+
+/* Bookmarklet / share support: index.html?add=<url>&title=<title> opens the form pre-filled */
+const params = new URLSearchParams(location.search);
+if (params.get("add")) {
+  $("f-url").value = params.get("add");
+  if (params.get("title")) $("f-title").value = params.get("title");
+}
+
+/* ---------- load data ---------- */
+fetch("links.yml", { cache: "no-store" })
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+  .then(txt => {
+    links = (jsyaml.load(txt) || []).map(l => ({ ...l, added: l.added ? String(l.added).slice(0, 10) : "" }));
+    links.sort((a, b) => b.added.localeCompare(a.added));
+    render();
+  })
+  .catch(() => { $("list").innerHTML = `<div class="msg">Couldn't load links.yml. It must sit next to this page, and the page must be served over the web (GitHub Pages), not opened as a local file.</div>`; })
+  .finally(() => { if (params.get("add")) openForm(true); });
+</script>
+</body>
+</html>
