@@ -15,7 +15,7 @@
 - url: https://www.arduino.cc/product-uno-q/?_gl=1*i3bz3n*_up*MQ..*_ga*MTU2MDA2MjIzOC4xNzkzMDk2Mjk4*_ga_NEXN8H46L5*czE3OTMwOTYyOTUkbzEkZzAkdDE3OTMwOTYyOTUkajYwJGwwJGg0OTY2NzY4OTQ.
   title: Arduino Uno Q
   note: Arduino UNO Q bridges high-performance computing with real-time control. Discover innovation made simple.
-  tags: [arduino, hardware, edge-ai]
+  tags: [arduino, hardware, edge-ai, sbc]
   added: 2026-10-28
 
 - url: https://hackaday.com/2026/10/10/poking-at-the-radxa-dragon-q8b-raspberry-pi-5-killer/
