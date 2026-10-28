@@ -33,7 +33,8 @@
   found_via: Google search
 
 - url: https://revealjs.com/
-  title: revealjs.com
+  title: The HTML presentation framework | reveal.js
+  note: Documentation and demos for the open source reveal.js HTML presentation framework.
   tags: [presentation, js]
   added: 2026-10-28
   found_via: Word of mouth
